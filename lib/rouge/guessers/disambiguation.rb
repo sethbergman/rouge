@@ -75,6 +75,8 @@ module Rouge
       disambiguate '*.h' do
         next ObjectiveC if matches?(/@(end|implementation|protocol|property)\b/)
         next ObjectiveC if contains?('@"')
+        next Cpp if matches?(/^\s*(?:catch|class|constexpr|namespace|private|
+                                   protected|public|template|throw|try|using)\b/x)
 
         C
       end
@@ -86,7 +88,11 @@ module Rouge
         next Mathematica if contains?('(*')
         next Mathematica if contains?(':=')
 
+        next Mason if matches?(/<%(def|method|text|doc|args|flags|attr|init|once|shared|perl|cleanup|filter)([^>]*)(>)/)
+
         next Matlab if matches?(/^\s*?%/)
+
+        next Mason if matches? %r!(</?%|<&)!
       end
 
       disambiguate '*.php' do
@@ -100,6 +106,30 @@ module Rouge
         next Hack if matches?(/(\(|, ?)\$\$/)
 
         Cpp
+      end
+
+      disambiguate '*.plist' do
+        next XML if matches?(/\A<\?xml\b/)
+
+        Plist
+      end
+
+      disambiguate '*.sc' do
+        next Python if matches?(/^#/)
+        next SuperCollider if matches?(/(?:^~|;$)/)
+
+        next Python
+      end
+
+      disambiguate 'Messages' do
+        next MsgTrans if matches?(/^[^\s:]+:[^\s:]+/)
+
+        next PlainText
+      end
+
+      disambiguate '*.cls' do
+        next TeX if matches?(/\A\s*(?:\\|%)/)
+        next Apex
       end
     end
   end

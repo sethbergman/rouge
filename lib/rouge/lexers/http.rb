@@ -26,8 +26,8 @@ module Rouge
         # request
         rule %r(
           (#{HTTP.http_methods.join('|')})([ ]+) # method
-          ([^ ]+)([ ]+)                     # path
-          (HTTPS?)(/)(1[.][01])(\r?\n|$)  # http version
+          ([^ ]+)([ ]+)                          # path
+          (HTTPS?)(/)(\d(?:\.\d)?)(\r?\n|$)      # http version
         )ox do
           groups(
             Name::Function, Text,
@@ -40,9 +40,9 @@ module Rouge
 
         # response
         rule %r(
-          (HTTPS?)(/)(1[.][01])([ ]+) # http version
-          (\d{3})([ ]+)               # status
-          ([^\r\n]+)(\r?\n|$)       # status message
+          (HTTPS?)(/)(\d(?:\.\d))([ ]+)  # http version
+          (\d{3})([ ]+)?                 # status
+          ([^\r\n]*)?(\r?\n|$)           # status message
         )x do
           groups(
             Keyword, Operator, Num, Text,
@@ -54,7 +54,7 @@ module Rouge
       end
 
       state :headers do
-        rule /([^\s:]+)( *)(:)( *)([^\r\n]+)(\r?\n|$)/ do |m|
+        rule %r/([^\s:]+)( *)(:)( *)([^\r\n]+)(\r?\n|$)/ do |m|
           key = m[1]
           value = m[5]
           if key.strip.casecmp('content-type').zero?
@@ -64,15 +64,15 @@ module Rouge
           groups Name::Attribute, Text, Punctuation, Text, Str, Text
         end
 
-        rule /([^\r\n]+)(\r?\n|$)/ do
+        rule %r/([^\r\n]+)(\r?\n|$)/ do
           groups Str, Text
         end
 
-        rule /\r?\n/, Text, :content
+        rule %r/\r?\n/, Text, :content
       end
 
       state :content do
-        rule /.+/m do |m|
+        rule %r/.+/m do
           delegate(content_lexer)
         end
       end

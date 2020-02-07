@@ -37,35 +37,43 @@ module Rouge
         @builtins ||= %w()
       end
 
+      prepend :hash do
+        rule %r/[.,()*]/, Punctuation
+      end
+
+      prepend :array do
+        rule %r/[.,()*]/, Punctuation
+      end
+
       state :strings do
-        rule /\\./, Str::Escape
-        rule /\$\{/ do
+        rule %r/\\./, Str::Escape
+        rule %r/\$\{/ do
           token Keyword
           push :interpolation
         end
       end
 
       state :dq do
-        rule /[^\\"\$]+/, Str::Double
+        rule %r/[^\\"\$]+/, Str::Double
         mixin :strings
-        rule /"/, Str::Double, :pop!
+        rule %r/"/, Str::Double, :pop!
       end
 
       state :sq do
-        rule /[^\\'\$]+/, Str::Single
+        rule %r/[^\\'\$]+/, Str::Single
         mixin :strings
-        rule /'/, Str::Single, :pop!
+        rule %r/'/, Str::Single, :pop!
       end
 
       state :heredoc do
-        rule /\n/, Str::Heredoc, :heredoc_nl
-        rule /[^$\n\$]+/, Str::Heredoc
-        rule /[$]/, Str::Heredoc
+        rule %r/\n/, Str::Heredoc, :heredoc_nl
+        rule %r/[^$\n]+/, Str::Heredoc
+        rule %r/[$]/, Str::Heredoc
         mixin :strings
       end
 
       state :interpolation do
-        rule /\}/ do
+        rule %r/\}/ do
           token Keyword
           pop!
         end
@@ -77,12 +85,12 @@ module Rouge
 
       state :expression do
         mixin :primitives
-        rule /\s+/, Text
+        rule %r/\s+/, Text
 
         rule %r(\+\+ | -- | ~ | && | \|\| | \\(?=\n) | << | >>>? | == | != )x, Operator
         rule %r([-<>+*%&|\^/!=?:]=?), Operator
-        rule /[(\[,]/, Punctuation
-        rule /[)\].]/, Punctuation
+        rule %r/[(\[,]/, Punctuation
+        rule %r/[)\].]/, Punctuation
 
         rule id do |m|
           if self.class.keywords.include? m[0]

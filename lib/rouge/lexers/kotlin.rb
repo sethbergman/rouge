@@ -19,24 +19,17 @@ module Rouge
         external false final finally for fun get if import in infix
         inline inner interface internal is lateinit noinline null
         object open operator out override package private protected
-        public reified return sealed set super tailrec this throw
-        true try typealias typeof val var vararg when where while
-        yield
+        public reified return sealed set super suspend tailrec this
+        throw true try typealias typeof val var vararg when where
+        while yield
       )
 
-      name = %r'@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Nl}\p{Nd}\p{Pc}\p{Cf}\p{Mn}\p{Mc}]*'
-      name_backtick = %r'#{name}|`#{name}`'
+      name_chars = %r'[-_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Nl}\p{Nd}\p{Pc}\p{Cf}\p{Mn}\p{Mc}]*'
 
-      id = %r'(#{name_backtick})'
+      class_name = %r'`?[\p{Lu}]#{name_chars}`?'
+      name = %r'`?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Nl}]#{name_chars}`?'
 
       state :root do
-        rule %r'(\))(\s*)(:)(\s+)(#{name_backtick})(<)' do
-          groups Punctuation, Text, Punctuation, Text, Name::Class, Punctuation
-          push :generic_parameters
-        end
-        rule %r'(\))(\s*)(:)(\s+)(#{name_backtick})' do
-          groups Punctuation, Text, Punctuation, Text, Name::Class
-        end
         rule %r'\b(companion)(\s+)(object)\b' do
           groups Keyword, Text, Keyword
         end
@@ -47,13 +40,6 @@ module Rouge
         rule %r'\b(fun)(\s+)' do
           groups Keyword, Text
           push :function
-        end
-        rule %r'(#{name_backtick})(:)(\s+)(#{name_backtick})(<)' do
-          groups Name::Variable, Punctuation, Text, Name::Class, Punctuation
-          push :generic_parameters
-        end
-        rule %r'(#{name_backtick})(:)(\s+)(#{name_backtick})' do
-          groups Name::Variable, Punctuation, Text, Name::Class
         end
         rule %r'\b(package|import)(\s+)' do
           groups Keyword, Text
@@ -67,13 +53,14 @@ module Rouge
           groups Keyword::Declaration, Text
           push :property
         end
-        rule %r/\bfun\b/, Keyword
-        rule /\b(?:#{keywords.join('|')})\b/, Keyword
+        rule %r'\bfun\b', Keyword
+        rule %r'\b(?:#{keywords.join('|')})\b', Keyword
         rule %r'^\s*\[.*?\]', Name::Attribute
         rule %r'[^\S\n]+', Text
         rule %r'\\\n', Text # line continuation
         rule %r'//.*?$', Comment::Single
-        rule %r'/[*].*?[*]/'m, Comment::Multiline
+        rule %r'/[*].*[*]/', Comment::Multiline # single line block comment
+        rule %r'/[*].*', Comment::Multiline, :comment # multiline block comment
         rule %r'\n', Text
         rule %r'::|!!|\?[:.]', Operator
         rule %r"(\.\.)", Operator
@@ -84,43 +71,56 @@ module Rouge
         rule %r'"(\\\\|\\"|[^"\n])*["\n]'m, Str
         rule %r"'\\.'|'[^\\]'", Str::Char
         rule %r"[0-9](\.[0-9]+)?([eE][+-][0-9]+)?[flFL]?|0[xX][0-9a-fA-F]+[Ll]?", Num
-        rule /@#{id}/, Name::Decorator
-        rule id, Name
+        rule %r'(@#{class_name})', Name::Decorator
+        rule %r'(#{class_name})(<)' do
+          groups Name::Class, Punctuation
+          push :generic_parameters
+        end
+        rule class_name, Name::Class
+        rule %r'(#{name})(?=\s*[({])', Name::Function
+        rule name, Name
       end
 
       state :package do
-        rule /\S+/, Name::Namespace, :pop!
+        rule %r'\S+', Name::Namespace, :pop!
       end
 
       state :class do
-        rule id, Name::Class, :pop!
+        rule class_name, Name::Class, :pop!
       end
 
       state :function do
         rule %r'(<)', Punctuation, :generic_parameters
         rule %r'(\s+)', Text
-        rule %r'(#{name_backtick})(\.)' do
+        rule %r'(#{class_name})(\.)' do
           groups Name::Class, Punctuation
         end
-        rule id, Name::Function, :pop!
+        rule name, Name::Function, :pop!
       end
 
       state :generic_parameters do
-        rule id, Name::Class
+        rule class_name, Name::Class
+        rule %r'(<)', Punctuation, :generic_parameters
         rule %r'(,)', Punctuation
         rule %r'(\s+)', Text
         rule %r'(>)', Punctuation, :pop!
       end
 
       state :property do
-        rule id, Name::Property, :pop!
+        rule name, Name::Property, :pop!
       end
 
       state :destructure do
         rule %r'(,)', Punctuation
         rule %r'(\))', Punctuation, :pop!
         rule %r'(\s+)', Text
-        rule id, Name::Property
+        rule name, Name::Property
+      end
+
+      state :comment do
+        rule %r'\s*/[*].*', Comment::Multiline, :comment
+        rule %r'.*[*]/', Comment::Multiline, :pop!
+        rule %r'.*', Comment::Multiline
       end
     end
   end

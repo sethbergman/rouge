@@ -1,3 +1,4 @@
+#![test(a::b)]
 fn f() {
     let a = String::new("hello");
     let b: &str = a;
@@ -11,6 +12,13 @@ fn g() {
     io::println(d);
 }
 
+fn h(a: i32) -> i32 {
+  let b = (a / 4 + 1_000) * 2 - 3;
+  let c = (a | 0b0100) & 0xF;
+
+  c ^ !b
+}
+
 fn main() {
     f();
     g();
@@ -18,12 +26,18 @@ fn main() {
 
 let mut f = File::open("username.txt")?;
 
-debug!("test %?", a.b);
-debug!("test %u", a.c);
-debug!("test %i", a.d);
-debug!("test %c", a.e);
-debug!("test %f", a.f);
-debug!("test %b", a.g);
+println!("a\\");
+println!("a\n");
+println!("a\"b");
+println!("a\'");
+println!(r"");
+println!(r"\n\");
+println!(r#"a"b\"#);
+println!(r##"r#""#"##);
+println!(r###"r##"r#""#"##"###);
+println!(r#"
+  "New line in a raw string"
+"#);
 
 trait iterable<A> {
     fn iterate(blk: fn(x: &A) -> bool);
@@ -381,7 +395,17 @@ enum HTMLFragment {
     text(~str),
 }
 
+fn int_literals_delimiter() {
+    let billion = 1000_000_000;
+    let red_color = 0xff_60_60;
+}
+
 // Some hidden lines by starting with hash
 # extern crate core;
 # use core::str;
 # let x = 5;
+
+async fn learn_and_sing() {
+    let song = learn_song().await;
+    sing_song(song).await;
+}

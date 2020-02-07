@@ -1,4 +1,11 @@
 /**
+ * Nested
+ /**
+  * Comments
+  */
+*/
+
+/**
  * This is a straightforward implementation of The Game of Life
  * See http://en.wikipedia.org/wiki/Conway's_Game_of_Life
  */
@@ -52,6 +59,8 @@ fun next(field: Field): Field {
     }
 }
 
+`maven-publish-plugin`
+
 /** A few colony examples here */
 fun main(args: Array<String>) {
     // Simplistic demo
@@ -103,6 +112,15 @@ fun main(args: Array<String>) {
         -------***---***---
         -------------------
     """, 10)
+}
+
+data class Point(x: Float, y: Float)
+
+class ExampleChild(x: Int): Parent(x) {
+    fun something(): Thing<MyType> {
+        val thisThing = OtherThing(x)
+        return Thing<MyType>()
+    }
 }
 
 // UTILITIES

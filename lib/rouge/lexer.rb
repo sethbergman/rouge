@@ -23,6 +23,14 @@ module Rouge
         new(opts).lex(stream, &b)
       end
 
+      # In case #continue_lex is called statically, we simply
+      # begin a new lex from the beginning, since there is no state.
+      #
+      # @see #continue_lex
+      def continue_lex(*a, &b)
+        lex(*a, &b)
+      end
+
       # Given a name in string, return the correct lexer class.
       # @param [String] name
       # @return [Class<Rouge::Lexer>,nil]
@@ -40,6 +48,9 @@ module Rouge
       #   and you can pass a second argument of the code to guess by
       #
       #     Lexer.find_fancy('guess', "#!/bin/bash\necho Hello, world")
+      #
+      #   If the code matches more than one lexer then Guesser::Ambiguous
+      #   is raised.
       #
       # This is used in the Redcarpet plugin as well as Rouge's own
       # markdown lexer for highlighting internal code blocks.
@@ -106,7 +117,7 @@ module Rouge
       def demo_file(arg=:absent)
         return @demo_file = Pathname.new(arg) unless arg == :absent
 
-        @demo_file = Pathname.new(__FILE__).dirname.join('demos', tag)
+        @demo_file = Pathname.new(File.join(__dir__, 'demos', tag))
       end
 
       # Specify or get a small demo string for this lexer
@@ -118,7 +129,7 @@ module Rouge
 
       # @return a list of all lexers.
       def all
-        registry.values.uniq
+        @all ||= registry.values.uniq
       end
 
       # Guess which lexer to use based on a hash of info.
@@ -188,16 +199,25 @@ module Rouge
       end
 
       def disable_debug!
-        @debug_enabled = false
+        remove_instance_variable :@debug_enabled if defined? @debug_enabled
       end
 
       def debug_enabled?
-        !!@debug_enabled
+        (defined? @debug_enabled) ? true : false
+      end
+
+      # Determine if a lexer has a method named +:detect?+ defined in its
+      # singleton class.
+      def detectable?
+        return @detectable if defined?(@detectable)
+        @detectable = singleton_methods(false).include?(:detect?)
       end
 
     protected
       # @private
       def register(name, lexer)
+        # reset an existing list of lexers
+        @all = nil if defined?(@all)
         registry[name.to_s] = lexer
       end
 
@@ -236,6 +256,13 @@ module Rouge
 
       # Specify a list of filename globs associated with this lexer.
       #
+      # If a filename glob is associated with more than one lexer, this can
+      # cause a Guesser::Ambiguous error to be raised in various guessing
+      # methods. These errors can be avoided by disambiguation. Filename globs
+      # are disambiguated in one of two ways. Either the lexer will define a
+      # `self.detect?` method (intended for use with shebangs and doctypes) or a
+      # manual rule will be specified in Guessers::Disambiguation.
+      #
       # @example
       #   class Ruby < Lexer
       #     filenames '*.rb', '*.ruby', 'Gemfile', 'Rakefile'
@@ -256,7 +283,9 @@ module Rouge
 
       # @private
       def assert_utf8!(str)
-        return if %w(US-ASCII UTF-8 ASCII-8BIT).include? str.encoding.name
+        encoding = str.encoding.name
+        return if encoding == 'US-ASCII' || encoding == 'UTF-8' || encoding == 'ASCII-8BIT'
+
         raise EncodingError.new(
           "Bad encoding: #{str.encoding.names.join(',')}. " +
           "Please convert your string to UTF-8."
@@ -285,12 +314,12 @@ module Rouge
       @options = {}
       opts.each { |k, v| @options[k.to_s] = v }
 
-      @debug = Lexer.debug_enabled? && bool_option(:debug)
+      @debug = Lexer.debug_enabled? && bool_option('debug')
     end
 
     def as_bool(val)
       case val
-      when nil, false, 0, '0', 'off'
+      when nil, false, 0, '0', 'false', 'off'
         false
       when Array
         val.empty? ? true : as_bool(val.last)
@@ -340,8 +369,10 @@ module Rouge
     end
 
     def bool_option(name, &default)
-      if @options.key?(name.to_s)
-        as_bool(@options[name.to_s])
+      name_str = name.to_s
+
+      if @options.key?(name_str)
+        as_bool(@options[name_str])
       else
         default ? default.call : false
       end
@@ -393,12 +424,37 @@ module Rouge
     #
     # @option opts :continue
     #   Continue the lex from the previous state (i.e. don't call #reset!)
-    def lex(string, opts={}, &b)
-      return enum_for(:lex, string, opts) unless block_given?
+    #
+    # @note The use of :continue => true has been deprecated. A warning is
+    #       issued if run with `$VERBOSE` set to true.
+    #
+    # @note The use of arbitrary `opts` has never been supported, but we
+    #       previously ignored them with no error. We now warn unconditionally.
+    def lex(string, opts=nil, &b)
+      if opts
+        if (opts.keys - [:continue]).size > 0
+          # improper use of options hash
+          warn('Improper use of Lexer#lex - this method does not receive options.' +
+               ' This will become an error in a future version.')
+        end
+
+        if opts[:continue]
+          warn '`lex :continue => true` is deprecated, please use #continue_lex instead'
+          return continue_lex(string, &b)
+        end
+      end
+
+      return enum_for(:lex, string) unless block_given?
 
       Lexer.assert_utf8!(string)
+      reset!
 
-      reset! unless opts[:continue]
+      continue_lex(string, &b)
+    end
+
+    # Continue the lex from the the current state without resetting
+    def continue_lex(string, &b)
+      return enum_for(:continue_lex, string, &b) unless block_given?
 
       # consolidate consecutive tokens of the same type
       last_token = nil
@@ -454,9 +510,7 @@ module Rouge
     def self.load_lexer(relpath)
       return if @_loaded_lexers.key?(relpath)
       @_loaded_lexers[relpath] = true
-
-      root = Pathname.new(__FILE__).dirname.join('lexers')
-      load root.join(relpath)
+      load File.join(__dir__, 'lexers', relpath)
     end
   end
 end

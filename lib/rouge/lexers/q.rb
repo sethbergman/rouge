@@ -36,23 +36,23 @@ module Rouge
 
       state :root do
         # q allows a file to start with a shebang
-        rule /#!(.*?)$/, Comment::Preproc, :top
-        rule //, Text, :top
+        rule %r/#!(.*?)$/, Comment::Preproc, :top
+        rule %r//, Text, :top
       end
 
       state :top do
         # indented lines at the top of the file are ignored by q
-        rule /^[ \t\r]+.*$/, Comment::Special
-        rule /\n+/, Text
-        rule //, Text, :base
+        rule %r/^[ \t\r]+.*$/, Comment::Special
+        rule %r/\n+/, Text
+        rule %r//, Text, :base
       end
 
       state :base do
-        rule /\n+/m, Text
+        rule %r/\n+/m, Text
         rule(/^.\)/, Keyword::Declaration)
 
         # Identifiers, word operators, etc.
-        rule /#{identifier}/ do |m|
+        rule %r/#{identifier}/ do |m|
           if self.class.keywords.include? m[0]
             token Keyword
           elsif self.class.word_operators.include? m[0]
@@ -67,7 +67,7 @@ module Rouge
         end
 
         # White space and comments
-        rule(%r{[ \t\r]\/.*$}, Comment::Single)
+        rule(%r{\s+/.*}, Comment::Single)
         rule(/[ \t\r]+/, Text::Whitespace)
         rule(%r{^/$.*?^\\$}m, Comment::Multiline)
         rule(%r{^\/[^\n]*$(\n[^\S\n]+.*$)*}, Comment::Multiline)
@@ -102,7 +102,7 @@ module Rouge
         rule(%r{(`:[:a-z0-9._\/]*|`(?:[a-z0-9.][:a-z0-9._]*)?)}i, Str::Symbol)
         rule(/(?:<=|>=|<>|::)|[?:$%&|@._#*^\-+~,!><=]:?/, Operator)
 
-        rule /[{}\[\]();]/, Punctuation
+        rule %r/[{}\[\]();]/, Punctuation
 
         # commands
         rule(/\\.*\n/, Text)
@@ -110,14 +110,15 @@ module Rouge
       end
 
       state :string do
-        rule(/"/, Str, :pop!)
-        rule /\\([\\nr]|[01][0-7]{2})/, Str::Escape
-        rule /[^\\"\n]+/, Str
-        rule /\\/, Str # stray backslash
+        rule %r/\\"/, Str
+        rule %r/"/, Str, :pop!
+        rule %r/\\([\\nr]|[01][0-7]{2})/, Str::Escape
+        rule %r/[^\\"\n]+/, Str
+        rule %r/\\/, Str # stray backslash
       end
 
       state :bottom do
-        rule /.*\z/m, Comment::Multiline
+        rule %r/.*\z/m, Comment::Multiline
       end
     end
   end

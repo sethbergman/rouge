@@ -4,6 +4,8 @@
 # not required by the main lib.
 # to use this module, require 'rouge/cli'.
 
+require 'rbconfig'
+
 module Rouge
   class FileReader
     attr_reader :input
@@ -38,7 +40,7 @@ module Rouge
     def self.doc
       return enum_for(:doc) unless block_given?
 
-      yield %|usage: rougify [command] [args...]|
+      yield %|usage: rougify {global options} [command] [args...]|
       yield %||
       yield %|where <command> is one of:|
       yield %|	highlight	#{Highlight.desc}|
@@ -47,6 +49,9 @@ module Rouge
       yield %|	list		#{List.desc}|
       yield %|	guess		#{Guess.desc}|
       yield %|	version		#{Version.desc}|
+      yield %||
+      yield %|global options:|
+      yield %[	--require|-r <fname>	require <fname> after loading rouge]
       yield %||
       yield %|See `rougify help <command>` for more info.|
     end
@@ -62,18 +67,22 @@ module Rouge
     def self.parse(argv=ARGV)
       argv = normalize_syntax(argv)
 
-      mode = argv.shift
+      while (head = argv.shift)
+        case head
+        when '-h', '--help', 'help', '-help'
+          return Help.parse(argv)
+        when '--require', '-r'
+          require argv.shift
+        else
+          break
+        end
+      end
 
-      klass = class_from_arg(mode)
+      klass = class_from_arg(head)
       return klass.parse(argv) if klass
 
-      case mode
-      when '-h', '--help', 'help', '-help', nil
-        Help.parse(argv)
-      else
-        argv.unshift(mode) if mode
-        Highlight.parse(argv)
-      end
+      argv.unshift(head) if head
+      Highlight.parse(argv)
     end
 
     def initialize(options={})
@@ -91,7 +100,7 @@ module Rouge
       case arg
       when 'version', '--version', '-v'
         Version
-      when 'help'
+      when 'help', nil
         Help
       when 'highlight', 'hi'
         Highlight
@@ -186,11 +195,29 @@ module Rouge
         yield %[]
         yield %[--require|-r <filename>     require a filename or library before]
         yield %[                            highlighting]
+        yield %[]
+        yield %[--escape                    allow the use of escapes between <! and !>]
+        yield %[]
+        yield %[--escape-with <l> <r>       allow the use of escapes between custom]
+        yield %[                            delimiters. implies --escape]
+      end
+
+      # There is no consistent way to do this, but this is used elsewhere,
+      # and we provide explicit opt-in and opt-out with $COLORTERM
+      def self.supports_truecolor?
+        return true if %w(24bit truecolor).include?(ENV['COLORTERM'])
+        return false if ENV['COLORTERM'] && ENV['COLORTERM'] =~ /256/
+
+        if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
+          ENV['ConEmuANSI'] == 'ON' && !ENV['ANSICON']
+        else
+          ENV['TERM'] !~ /(^rxvt)|(-color$)/
+        end
       end
 
       def self.parse(argv)
         opts = {
-          :formatter => 'terminal256',
+          :formatter => supports_truecolor? ? 'terminal-truecolor' : 'terminal256',
           :theme => 'thankful_eyes',
           :css_class => 'codehilite',
           :input_file => '-',
@@ -218,6 +245,10 @@ module Rouge
             opts[:css_class] = argv.shift
           when '--lexer-opts', '-L'
             opts[:lexer_opts] = parse_cgi(argv.shift)
+          when '--escape'
+            opts[:escape] = ['<!', '!>']
+          when '--escape-with'
+            opts[:escape] = [argv.shift, argv.shift]
           when /^--/
             error! "unknown option #{arg.inspect}"
           else
@@ -244,11 +275,23 @@ module Rouge
         )
       end
 
-      def lexer
-        @lexer ||= lexer_class.new(@lexer_opts)
+      def raw_lexer
+        lexer_class.new(@lexer_opts)
       end
 
-      attr_reader :input_file, :lexer_name, :mimetype, :formatter
+      def escape_lexer
+        Rouge::Lexers::Escape.new(
+          start: @escape[0],
+          end: @escape[1],
+          lang: raw_lexer,
+        )
+      end
+
+      def lexer
+        @lexer ||= @escape ? escape_lexer : raw_lexer
+      end
+
+      attr_reader :input_file, :lexer_name, :mimetype, :formatter, :escape
 
       def initialize(opts={})
         Rouge::Lexer.enable_debug!
@@ -271,19 +314,26 @@ module Rouge
 
         theme = Theme.find(opts[:theme]).new or error! "unknown theme #{opts[:theme]}"
 
+        # TODO: document this in --help
         @formatter = case opts[:formatter]
         when 'terminal256' then Formatters::Terminal256.new(theme)
+        when 'terminal-truecolor' then Formatters::TerminalTruecolor.new(theme)
         when 'html' then Formatters::HTML.new
         when 'html-pygments' then Formatters::HTMLPygments.new(Formatters::HTML.new, opts[:css_class])
         when 'html-inline' then Formatters::HTMLInline.new(theme)
+        when 'html-line-table' then Formatters::HTMLLineTable.new(Formatters::HTML.new)
         when 'html-table' then Formatters::HTMLTable.new(Formatters::HTML.new)
         when 'null', 'raw', 'tokens' then Formatters::Null.new
+        when 'tex' then Formatters::Tex.new
         else
           error! "unknown formatter preset #{opts[:formatter]}"
         end
+
+        @escape = opts[:escape]
       end
 
       def run
+        Formatter.enable_escape! if @escape
         formatter.format(lexer.lex(input), &method(:print))
       end
 
@@ -310,18 +360,30 @@ module Rouge
         yield %|respectively. Theme defaults to thankful_eyes.|
         yield %||
         yield %|options:|
-        yield %|  --scope	(default: .highlight) a css selector to scope by|
+        yield %|  --scope     	(default: .highlight) a css selector to scope by|
+        yield %|  --tex       	(default: false) render as TeX|
+        yield %|  --tex-prefix	(default: RG) a command prefix for TeX|
+        yield %|              	implies --tex if specified|
         yield %||
         yield %|available themes:|
         yield %|  #{Theme.registry.keys.sort.join(', ')}|
       end
 
       def self.parse(argv)
-        opts = { :theme_name => 'thankful_eyes' }
+        opts = {
+          :theme_name => 'thankful_eyes',
+          :tex => false,
+          :tex_prefix => 'RG'
+        }
 
         until argv.empty?
           arg = argv.shift
           case arg
+          when '--tex'
+            opts[:tex] = true
+          when '--tex-prefix'
+            opts[:tex] = true
+            opts[:tex_prefix] = argv.shift
           when /--(\w+)/
             opts[$1.tr('-', '_').to_sym] = argv.shift
           else
@@ -338,6 +400,10 @@ module Rouge
           or error! "unknown theme: #{theme_name}"
 
         @theme = theme_class.new(opts)
+        if opts[:tex]
+          tex_prefix = opts[:tex_prefix]
+          @theme = TexThemeRenderer.new(@theme, prefix: tex_prefix)
+        end
       end
 
       def run
