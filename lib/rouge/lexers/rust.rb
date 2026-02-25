@@ -22,27 +22,31 @@ module Rouge
 
       def self.keywords
         @keywords ||= %w(
-          as assert async await break crate const continue copy do drop dyn else enum extern
-          fail false fn for if impl let log loop macro match mod move mut priv pub pure
-          ref return self Self static struct super true try trait type union unsafe use
-          where while yield box
+          as async await break const continue crate dyn else enum extern false
+          fn for if impl in let log loop match mod move mut pub ref return self
+          Self static struct super trait true type unsafe use where while
+          abstract become box do final macro
+          override priv typeof unsized virtual
+          yield try
+          union
         )
       end
 
       def self.builtins
         @builtins ||= Set.new %w(
           Add BitAnd BitOr BitXor bool c_char c_double c_float char
-          c_int clock_t c_long c_longlong Cons Const Copy c_schar c_short
+          c_int clock_t c_long c_longlong Copy c_schar c_short
           c_uchar c_uint c_ulong c_ulonglong c_ushort c_void dev_t DIR
-          dirent Div Either Eq Err f32 f64 Failure FILE float fpos_t
-          i16 i32 i64 i8 isize Index ino_t int intptr_t Left mode_t Modulo Mul
-          Neg Nil None Num off_t Ok Option Ord Owned pid_t Ptr ptrdiff_t
-          Right Send Shl Shr size_t Some ssize_t str Sub Success time_t
+          dirent Div Eq Err f32 f64 FILE float fpos_t
+          i16 i32 i64 i8 isize Index ino_t int intptr_t mode_t Mul
+          Neg None off_t Ok Option Ord Owned pid_t ptrdiff_t
+          Send Shl Shr size_t Some ssize_t str Sub time_t
           u16 u32 u64 u8 usize uint uintptr_t
-          Box Vec String Gc Rc Arc
+          Box Vec String Rc Arc
           u128 i128 Result Sync Pin Unpin Sized Drop drop Fn FnMut FnOnce
           Clone PartialEq PartialOrd AsMut AsRef From Into Default
           DoubleEndedIterator ExactSizeIterator Extend IntoIterator Iterator
+          FromIterator ToOwned ToString TryFrom TryInto
         )
       end
 
@@ -212,7 +216,8 @@ module Rouge
 
       state :has_literals do
         # constants
-        rule %r/\b(?:true|false|nil)\b/, Keyword::Constant
+        rule %r/\b(?:true|false)\b/, Keyword::Constant
+
         # characters/bytes
         rule %r(
           b?' (?: #{escapes} | [^\\] ) '
@@ -248,6 +253,7 @@ module Rouge
       state :string do
         rule %r/"/, Str, :pop!
         rule escapes, Str::Escape
+        rule %r/\\\n[ \t\r\n]*/, Str::Escape
         rule %r/[^"\\]+/m, Str
       end
     end

@@ -12,19 +12,19 @@ describe Rouge::Lexers::Shell do
   end
 
   it 'parses case statements correctly' do
-    assert_no_errors <<-sh
+    assert_no_errors <<-SH
       case $foo in
         a) echo "LOL" ;;
       esac
-    sh
+SH
   end
 
   it 'parses case statement with globs correctly' do
-    assert_no_errors <<-sh
+    assert_no_errors <<-SH
       case $foo in
         a[b]) echo "LOL" ;;
       esac
-    sh
+SH
   end
 
   it 'parses comments correctly' do
@@ -47,6 +47,16 @@ describe Rouge::Lexers::Shell do
       assert_guess :filename => 'foo.eclass'
       assert_guess :filename => 'foo.exheres-0'
       assert_guess :filename => 'foo.exlib'
+      assert_guess :filename => '.zshenv'
+      assert_guess :filename => '.zprofile'
+      assert_guess :filename => '.zshrc'
+      assert_guess :filename => '.zlogin'
+      assert_guess :filename => '.zlogout'
+      assert_guess :filename => 'zshenv'
+      assert_guess :filename => 'zprofile'
+      assert_guess :filename => 'zshrc'
+      assert_guess :filename => 'zlogin'
+      assert_guess :filename => 'zlogout'
       deny_guess   :filename => 'foo'
     end
 
@@ -62,6 +72,9 @@ describe Rouge::Lexers::Shell do
       assert_guess :source => '   #!   /bin/bash'
       assert_guess :source => '#!/usr/bin/env bash'
       assert_guess :source => '#!/usr/bin/env bash -i'
+      assert_guess :source => '#compdef myfunction1 mufunction2'
+      assert_guess :source => '#autoload'
+      assert_guess :source => '#autoload +X'
       deny_guess   :source => '#!/bin/smash'
       # not sure why you would do this, but hey, whatevs
       deny_guess   :source => '#!/bin/bash/python'

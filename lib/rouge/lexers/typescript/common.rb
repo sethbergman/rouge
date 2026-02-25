@@ -26,7 +26,10 @@ module Rouge
 
       def builtins
         @builtins ||= super + %w(
-          Pick Partial Readonly Record
+          Capitalize ConstructorParameters Exclude Extract InstanceType
+          Lowercase NonNullable Omit OmitThisParameter Parameters
+          Partial Pick Readonly Record Required
+          ReturnType ThisParameterType ThisType Uncapitalize Uppercase
         )
       end
 
@@ -34,6 +37,15 @@ module Rouge
         base.prepend :root do
           rule %r/[?][.]/, base::Punctuation
           rule %r/[?]{2}/, base::Operator
+
+          # Positive Examples:
+          # const cat = { name: "Garfield" } satisfies Person;
+          # import {something as thingy} from 'module'
+          # export { foo as default }
+          # ...spreadOperator as const;
+          # Negative Example:
+          # cy.get('kitten').as('friend')
+          rule %r{(?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(?:(as)|(satisfies))\s+}, base::Keyword::Declaration
         end
 
         base.prepend :statement do

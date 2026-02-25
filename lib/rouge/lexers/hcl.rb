@@ -5,6 +5,7 @@ module Rouge
   module Lexers
     class Hcl < RegexLexer
       tag 'hcl'
+      filenames '*.hcl', '*.nomad'
 
       title 'Hashicorp Configuration Language'
       desc 'Hashicorp Configuration Language, used by Terraform and other Hashicorp tools'
@@ -25,6 +26,7 @@ module Rouge
       state :primitives do
         rule %r/[0-9][0-9]*\.[0-9]+([eE][0-9]+)?[fd]?([kKmMgG]b?)?/, Num::Float
         rule %r/[0-9]+([kKmMgG]b?)?/, Num::Integer
+        rule %r/[-+*\/!%&<>|=:?]/, Operator
 
         rule %r/"/, Str::Double, :dq
         rule %r/'/, Str::Single, :sq
@@ -55,7 +57,7 @@ module Rouge
         @builtins ||= %w()
       end
 
-      id = /[$a-z_][a-z0-9_]*/io
+      id = /[$a-z_\-][a-z0-9_\-]*/io
 
       state :root do
         mixin :comments_and_whitespace
@@ -113,6 +115,7 @@ module Rouge
       state :hash do
         mixin :comments_and_whitespace
 
+        rule %r/[.,()\\\/*]/, Punctuation
         rule %r/\=/, Punctuation
         rule %r/\}/, Punctuation, :pop!
 
@@ -122,7 +125,7 @@ module Rouge
       state :array do
         mixin :comments_and_whitespace
 
-        rule %r/,/, Punctuation
+        rule %r/[.,()\\\/*]/, Punctuation
         rule %r/\]/, Punctuation, :pop!
 
         mixin :root

@@ -150,8 +150,95 @@ x @= y
 f'{hello} world {int(x) + 1}'
 f'{{ {4*10} }}'
 f'result: {value:{width}.{precision}}'
+f'{value!r}'
 
 # Unicode identifiers
 α = 10
 def coöperative(б):
     return f"{б} is Russian"
+
+def __init__(self, input_dim: list, output_dim: int, **kwargs):
+    super(AverageEmbedding, self).__init__(**kwargs)
+    self.input_dim = input_dim
+    self.output_dim = output_dim
+
+@abstractmethod
+def evaluate(self, *args, **kwargs):
+    raise NotImplementedError
+
+def _get_metadata(self, input_samples: list[InputSample]) -> Tuple[str, str, int]:
+    project_name, id = self._get_info()
+
+class Spam:
+    pass
+
+spam = Spam()
+
+# Doctest
+def factorial(n):
+    """Return the factorial of n, an exact integer >= 0.
+
+    >>> [factorial(n) for n in range(6)]
+    [1, 1, 2, 6, 24, 120]
+
+    >>> for i in [factorial(n) for n in range(2)]:
+    ...     print(i)
+    1
+    1
+    >>> factorial(30)
+    265252859812191058636308480000000
+    >>> factorial(-1)
+    Traceback (most recent call last):
+        ...
+    ValueError: n must be >= 0
+
+    Factorials of floats are OK, but the float must be an exact integer:
+    >>> factorial(30.1)
+    Traceback (most recent call last):
+        ...
+    ValueError: n must be exact integer
+    >>> factorial(30.0)
+    265252859812191058636308480000000
+
+    It must also not be ridiculously large:
+    >>> factorial(1e100)
+    Traceback (most recent call last):
+        ...
+    OverflowError: n too large
+    """
+    print("hello world")
+
+def do_nothing():
+    if False:
+        return
+        print("a...a")
+
+    with tracer.start_as_current_span('App Init'):
+        logger.info('OTEL Initialized...')
+
+    app = FastAPI()
+    FastAPIInstrumentor.instrument_app(app)
+
+match command.split():
+    case ['to', direction] if direction in destination.route:
+        return 1
+    case 'foo' | 'bar':
+        return 2
+    case 'raz' as name:
+        return 3
+    case ['to', _]:
+        return 4
+    case else_bar:
+        return 5
+    case _:
+        return 6
+
+match command.split():
+    case _Direction():
+        return 1
+    case _ as default:
+        return 2
+
+case = 1
+match = 1
+match if True else bar

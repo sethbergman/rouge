@@ -8,8 +8,8 @@ module Rouge
       desc "The Python programming language (python.org)"
       tag 'python'
       aliases 'py'
-      filenames '*.py', '*.pyw', '*.sc', 'SConstruct', 'SConscript', '*.tac',
-                '*.bzl', 'BUCK', 'BUILD', 'BUILD.bazel', 'WORKSPACE'
+      filenames '*.py', '*.pyi', '*.pyw', '*.sc', 'SConstruct', 'SConscript',
+                '*.tac', '*.bzl', 'BUCK', 'BUILD', 'BUILD.bazel', 'WORKSPACE'
       mimetypes 'text/x-python', 'application/x-python'
 
       def self.detect?(text)
@@ -20,50 +20,53 @@ module Rouge
         @keywords ||= %w(
           assert break continue del elif else except exec
           finally for global if lambda pass print raise
-          return try while yield as with from import yield
+          return try while yield as with from import
           async await nonlocal
         )
       end
 
       def self.builtins
         @builtins ||= %w(
-          __import__ abs all any apply ascii basestring bin bool buffer
-          bytearray bytes callable chr classmethod cmp coerce compile
-          complex delattr dict dir divmod enumerate eval execfile exit
-          file filter float format frozenset getattr globals hasattr hash hex id
-          input int intern isinstance issubclass iter len list locals
-          long map max memoryview min next object oct open ord pow property range
-          raw_input reduce reload repr reversed round set setattr slice
-          sorted staticmethod str sum super tuple type unichr unicode
-          vars xrange zip
+          __import__ abs aiter all anext any apply ascii
+          basestring bin bool buffer breakpoint bytearray bytes
+          callable chr classmethod cmp coerce compile complex
+          delattr dict dir divmod enumerate eval exec execfile exit
+          file filter float format frozenset getattr globals
+          hasattr hash help hex
+          id input int intern isinstance issubclass iter len list locals long
+          map max memoryview min next object oct open ord pow print property
+          range raw_input reduce reload repr reversed round set setattr slice
+          sorted staticmethod str sum super tuple type unichr unicode vars
+          xrange zip
         )
       end
 
       def self.builtins_pseudo
-        @builtins_pseudo ||= %w(self None Ellipsis NotImplemented False True)
+        @builtins_pseudo ||= %w(None Ellipsis NotImplemented False True)
       end
 
       def self.exceptions
         @exceptions ||= %w(
-          ArithmeticError AssertionError AttributeError
-          BaseException BlockingIOError BrokenPipeError BufferError
-          BytesWarning ChildProcessError ConnectionAbortedError
-          ConnectionError ConnectionRefusedError ConnectionResetError
-          DeprecationWarning EOFError EnvironmentError
-          Exception FileExistsError FileNotFoundError
-          FloatingPointError FutureWarning GeneratorExit IOError
-          ImportError ImportWarning IndentationError IndexError
-          InterruptedError IsADirectoryError KeyError KeyboardInterrupt
-          LookupError MemoryError ModuleNotFoundError NameError
-          NotADirectoryError NotImplemented NotImplementedError OSError
-          OverflowError OverflowWarning PendingDeprecationWarning
-          ProcessLookupError RecursionError ReferenceError ResourceWarning
-          RuntimeError RuntimeWarning StandardError StopAsyncIteration
-          StopIteration SyntaxError SyntaxWarning SystemError SystemExit
-          TabError TimeoutError TypeError UnboundLocalError UnicodeDecodeError
-          UnicodeEncodeError UnicodeError UnicodeTranslateError
-          UnicodeWarning UserWarning ValueError VMSError Warning
-          WindowsError ZeroDivisionError
+          ArithmeticError AssertionError AttributeError BaseException
+          BaseExceptionGroup BlockingIOError BrokenPipeError BufferError
+          BytesWarning ChildProcessError ConnectionAbortedError ConnectionError
+          ConnectionRefusedError ConnectionResetError DeprecationWarning
+          EOFError EnvironmentError EncodingWarning Exception ExceptionGroup
+          FileExistsError FileNotFoundError FloatingPointError FutureWarning
+          GeneratorExit IOError ImportError ImportWarning IndentationError
+          IndexError InterruptedError IsADirectoryError
+          KeyError KeyboardInterrupt LookupError
+          MemoryError ModuleNotFoundError
+          NameError NotADirectoryError NotImplemented NotImplementedError
+          OSError OverflowError OverflowWarning PendingDeprecationWarning
+          PermissionError ProcessLookupError PythonFinalizationError
+          RecursionError ReferenceError ResourceWarning RuntimeError RuntimeWarning
+          StandardError StopAsyncIteration StopIteration SyntaxError SyntaxWarning
+          SystemError SystemExit TabError TimeoutError TypeError
+          UnboundLocalError UnicodeDecodeError UnicodeEncodeError UnicodeError
+          UnicodeTranslateError UnicodeWarning UserWarning ValueError VMSError
+          Warning WindowsError
+          ZeroDivisionError
         )
       end
 
@@ -80,11 +83,15 @@ module Rouge
           groups Punctuation, Text, Str::Doc
         end
 
+        rule %r/\.\.\.\B$/, Name::Builtin::Pseudo
+
         rule %r/[^\S\n]+/, Text
         rule %r(#(.*)?\n?), Comment::Single
         rule %r/[\[\]{}:(),;.]/, Punctuation
         rule %r/\\\n/, Text
         rule %r/\\/, Text
+
+        rule %r/@#{dotted_identifier}/i, Name::Decorator
 
         rule %r/(in|is|and|or|not)\b/, Operator::Word
         rule %r/(<<|>>|\/\/|\*\*)=?/, Operator
@@ -93,13 +100,13 @@ module Rouge
         rule %r/(from)((?:\\\s|\s)+)(#{dotted_identifier})((?:\\\s|\s)+)(import)/ do
           groups Keyword::Namespace,
                  Text,
-                 Name::Namespace,
+                 Name,
                  Text,
                  Keyword::Namespace
         end
 
         rule %r/(import)(\s+)(#{dotted_identifier})/ do
-          groups Keyword::Namespace, Text, Name::Namespace
+          groups Keyword::Namespace, Text, Name
         end
 
         rule %r/(def)((?:\s|\\\s)+)/ do
@@ -112,15 +119,18 @@ module Rouge
           push :classname
         end
 
+        rule %r/([a-z_]\w*)[ \t]*(?=(\(.*\)))/m, Name::Function
+        rule %r/([A-Z_]\w*)[ \t]*(?=(\(.*\)))/m, Name::Class
+
         # TODO: not in python 3
         rule %r/`.*?`/, Str::Backtick
-        rule %r/([rfbu]{0,2})('''|"""|['"])/i do |m|
-          groups Str::Affix, Str
+        rule %r/([rtfbu]{0,2})('''|"""|['"])/i do |m|
+          groups Str::Affix, Str::Heredoc
           current_string.register type: m[1].downcase, delim: m[2]
           push :generic_string
         end
 
-        rule %r/@#{dotted_identifier}/i, Name::Decorator
+        mixin :soft_keywords
 
         # using negative lookbehind so we don't match property names
         rule %r/(?<!\.)#{identifier}/ do |m|
@@ -161,6 +171,28 @@ module Rouge
         rule identifier, Name::Class, :pop!
       end
 
+      state :soft_keywords do
+        rule %r/
+          (^[ \t]*)
+          (match|case)\b
+          (?![ \t]*
+            (?:[:,;=^&|@~)\]}] |
+              (?:#{Python.keywords.join('|')})\b))
+        /x do |m|
+          token Text::Whitespace, m[1]
+          token Keyword, m[2]
+          push :soft_keywords_inner
+        end
+      end
+
+      state :soft_keywords_inner do
+        rule %r((\s+)([^\n_]*)(_\b)) do |m|
+          groups Text::Whitespace, Text, Keyword
+        end
+
+        rule(//) { pop! }
+      end
+
       state :raise do
         rule %r/from\b/, Keyword
         rule %r/raise\b/, Keyword
@@ -175,11 +207,12 @@ module Rouge
       end
 
       state :generic_string do
-        rule %r/[^'"\\{]+/, Str
+        rule %r/^\s*(>>>|\.\.\.)\B/, Generic::Prompt, :doctest
+        rule %r/[^'"\\{]+?/, Str
         rule %r/{{/, Str
 
         rule %r/'''|"""|['"]/ do |m|
-          token Str
+          token Str::Heredoc
           if current_string.delim? m[0]
             current_string.remove
             pop!
@@ -217,10 +250,23 @@ module Rouge
         rule %r/\\./, Str, :pop!
       end
 
+      state :doctest do
+        rule %r/\n\n/, Text, :pop!
+
+        rule %r/'''|"""/ do
+          token Str::Heredoc
+          pop!(2) if in_state?(:generic_string) # pop :doctest and :generic_string
+        end
+
+        mixin :root
+      end
+
       state :generic_interpol do
-        rule %r/[^{}]+/ do |m|
+        rule %r/[^{}!:]+/ do |m|
           recurse m[0]
         end
+        rule %r/![asr]/, Str::Interpol
+        rule %r/:/, Str::Interpol
         rule %r/{/, Str::Interpol, :generic_interpol
         rule %r/}/, Str::Interpol, :pop!
       end

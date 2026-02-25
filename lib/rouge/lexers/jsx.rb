@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
+require_relative 'javascript'
+
 module Rouge
   module Lexers
-    load_lexer 'javascript.rb'
-
     class JSX < Javascript
       title 'JSX'
       desc 'An XML-like syntax extension to JavaScript (facebook.github.io/jsx/)'
@@ -57,7 +57,7 @@ module Rouge
           push :interpol
           push :expr_start
         end
-        rule %r/\w+/, Name::Attribute
+        rule %r/\w[\w-]*/, Name::Attribute
         rule %r/=/, Punctuation
         rule %r/(["']).*?(\1)/, Str
       end
@@ -89,4 +89,3 @@ module Rouge
     end
   end
 end
-

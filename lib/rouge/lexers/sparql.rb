@@ -26,7 +26,7 @@ module Rouge
         @keywords = Set.new %w[
           ADD ALL AS ASC ASK BASE BIND BINDINGS BY CLEAR CONSTRUCT COPY CREATE
           DATA DEFAULT DELETE DESC DESCRIBE DISTINCT DROP EXISTS FILTER FROM
-          GRAPH GROUP BY HAVING IN INSERT LIMIT LOAD MINUS MOVE NAMED NOT
+          GRAPH GROUP HAVING IN INSERT LIMIT LOAD MINUS MOVE NAMED NOT
           OFFSET OPTIONAL ORDER PREFIX SELECT REDUCED SERVICE SILENT TO UNDEF
           UNION USING VALUES WHERE WITH
         ]
@@ -41,16 +41,17 @@ module Rouge
         rule %r('''), Str::Single, :string_single_literal
         rule %r('), Str::Single, :string_single
 
-        rule %r([$?]\w+), Name::Variable
-        rule %r((\w*:)(\w+)?) do |m|
+        rule %r([$?][[:word:]]+), Name::Variable
+        rule %r(([[:word:]-]*)(:)([[:word:]-]+)?) do |m|
           token Name::Namespace, m[1]
-          token Str::Symbol, m[2]
+          token Operator, m[2]
+          token Str::Symbol, m[3]
         end
         rule %r(<[^>]*>), Name::Namespace
         rule %r(true|false)i, Keyword::Constant
         rule %r/a\b/, Keyword
 
-        rule %r([A-Z]\w+\b)i do |m|
+        rule %r([A-Z][[:word:]]+\b)i do |m|
           if self.class.builtins.include? m[0].upcase
             token Name::Builtin
           elsif self.class.keywords.include? m[0].upcase

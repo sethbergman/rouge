@@ -100,7 +100,7 @@ module Rouge
 
       def self.keywords
         @keywords ||= Set.new %w(
-          as async await break case catch continue debugger default delete
+          async await break case catch continue debugger default delete
           do else export finally from for if import in instanceof new of
           return super switch this throw try typeof void while yield
         )
@@ -149,7 +149,7 @@ module Rouge
         rule %r/\A\s*#!.*?\n/m, Comment::Preproc, :statement
         rule %r((?<=\n)(?=\s|/|<!--)), Text, :expr_start
         mixin :comments_and_whitespace
-        rule %r(\+\+ | -- | ~ | && | \|\| | \\(?=\n) | << | >>>? | ===
+        rule %r(\+\+ | -- | ~ | \?\?=? | && | \|\| | \\(?=\n) | << | >>>? | ===
                | !== )x,
           Operator, :expr_start
         rule %r([-<>+*%&|\^/!=]=?), Operator, :expr_start
@@ -177,9 +177,31 @@ module Rouge
           push :expr_start
         end
 
+        rule %r/(class)((?:\s|\\\s)+)/ do
+          groups Keyword::Declaration, Text
+          push :classname
+        end
+
+        rule %r/([\p{Nl}$_]*\p{Lu}[\p{Word}]*)[ \t]*(?=(\(.*\)))/m, Name::Class
+
+        rule %r/(function)((?:\s|\\\s)+)(#{id})/ do
+          groups Keyword::Declaration, Text, Name::Function
+        end
+
+        rule %r/function(?=(\(.*\)))/, Keyword::Declaration # For anonymous functions
+
+        rule %r/(#?#{id})[ \t]*(?=(\(.*\)))/m do |m|
+          if self.class.keywords.include?(m[1])
+            # "if" in "if (...)" or "switch" in "switch (...)" are recognized as keywords.
+            token Keyword
+          else
+            token Name::Function
+          end
+        end
+
         rule %r/[{}]/, Punctuation, :statement
 
-        rule id do |m|
+        rule %r/#?#{id}/ do |m|
           if self.class.keywords.include? m[0]
             token Keyword
             push :expr_start
@@ -218,6 +240,14 @@ module Rouge
         rule %r/\\[\\nrt']?/, Str::Escape
         rule %r/[^\\']+/, Str::Single
         rule %r/'/, Str::Delimiter, :pop!
+      end
+
+      state :classname do
+        rule %r/(#{id})((?:\s|\\\s)+)(extends)((?:\s|\\\s)+)/ do
+          groups Name::Class, Text, Keyword::Declaration, Text
+        end
+
+        rule id, Name::Class, :pop!
       end
 
       # braced parts that aren't object literals
@@ -271,7 +301,7 @@ module Rouge
       state :template_string do
         rule %r/[$]{/, Punctuation, :template_string_expr
         rule %r/`/, Str::Double, :pop!
-        rule %r/\\[$`]/, Str::Escape
+        rule %r/\\[$`\\]/, Str::Escape
         rule %r/[^$`\\]+/, Str::Double
         rule %r/[\\$]/, Str::Double
       end

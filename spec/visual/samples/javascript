@@ -148,6 +148,9 @@ Blag.ReadMore = (function($) {
   $(document).ready(init);
 })(jQuery);
 
+underscoreFunc = _underscoreFunc()
+underscoreClass = _UnderscoreClass()
+
 // evil regexes, from pygments
 
 /regexp/.test(foo) || x = [/regexp/,/regexp/, /regexp/, // comment
@@ -280,5 +283,35 @@ let x = /abc/y;
 class Œuvre {
   résumer(语言 = "français") {
     书名 = "Les Misérables";
+  }
+}
+
+unicodeClass = Œuvre()
+
+// Nullish coalescing operator (??)
+let ret = "";
+let foo, bar;
+
+ret += `// ${foo ?? "Unk"}: ${bar ?? "Just do it"}`;
+ret += "\n";
+
+let baz;
+baz ??= 'default';
+
+class ClassWithPrivate {
+  #privateField;
+  #privateFieldWithInitializer = 42;
+
+  #privateMethod(obj) {
+    if (#privateField in obj) return obj.#privateField;
+
+    return "invalid obj"
+  }
+
+  static #privateStaticField;
+  static #privateStaticFieldWithInitializer = 42;
+
+  static #privateStaticMethod() {
+    // …
   }
 }

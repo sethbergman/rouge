@@ -66,6 +66,12 @@ module Rouge
         end
       end
 
+      disambiguate '*.cfg' do
+        next CiscoIos if matches?(/\A\s*(version|banner|interface)\b/)
+
+        INI
+      end
+
       disambiguate '*.pl' do
         next Perl if contains?('my $')
         next Prolog if contains?(':-')
@@ -84,14 +90,24 @@ module Rouge
       disambiguate '*.m' do
         next ObjectiveC if matches?(/@(end|implementation|protocol|property)\b/)
         next ObjectiveC if contains?('@"')
+        
+        # Objective-C dereferenced pointers and Mathematica comments are similar.
+        # Disambiguate for Mathematica by looking for any amount of whitespace (or no whitespace)
+        # followed by "(*" (e.g. `(* comment *)`).
+        next Mathematica if matches?(/^\s*\(\*/)
 
-        next Mathematica if contains?('(*')
+        # Disambiguate for objc by looking for a deref'd pointer in a statement (e.g. `if (*foo == 0)`).
+        # This pattern is less specific than the Mathematica pattern, so its positioned after it.
+        next ObjectiveC if matches?(/^\s*(if|while|for|switch|do)\s*\([^)]*\*[^)]*\)/)
+
         next Mathematica if contains?(':=')
 
         next Mason if matches?(/<%(def|method|text|doc|args|flags|attr|init|once|shared|perl|cleanup|filter)([^>]*)(>)/)
 
         next Matlab if matches?(/^\s*?%/)
-
+        # Matlab cell array creation: data = {
+        next Matlab if matches?(/^\s*[a-zA-Z]\w*\s*=\s*\{/)
+        
         next Mason if matches? %r!(</?%|<&)!
       end
 
@@ -129,7 +145,27 @@ module Rouge
 
       disambiguate '*.cls' do
         next TeX if matches?(/\A\s*(?:\\|%)/)
+        next OpenEdge if matches?(/(no\-undo|BLOCK\-LEVEL|ROUTINE\-LEVEL|&ANALYZE\-SUSPEND)/i)
         next Apex
+      end
+
+      disambiguate '*.pp' do
+        next Puppet if matches?(/(::)?([a-z]\w*::)/)
+        next Pascal if matches?(/^(function|begin|var)\b/)
+        next Pascal if matches?(/\b(end(;|\.))/)
+
+        Puppet
+      end
+
+      disambiguate '*.p' do
+        next Prolog if contains?(':-')
+        next Prolog if matches?(/\A\w+(\(\w+\,\s*\w+\))*\./)
+        next OpenEdge
+      end
+
+      disambiguate '*.st' do
+        next IecST if matches?(/^\s*END_/i)
+        next Smalltalk
       end
     end
   end

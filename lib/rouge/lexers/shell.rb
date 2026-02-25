@@ -9,8 +9,11 @@ module Rouge
 
       tag 'shell'
       aliases 'bash', 'zsh', 'ksh', 'sh'
-      filenames '*.sh', '*.bash', '*.zsh', '*.ksh', '.bashrc', '.zshrc',
-                '.kshrc', '.profile', 'APKBUILD', 'PKGBUILD', '*.ebuild',
+      filenames '*.sh', '*.bash', '*.zsh', '*.ksh', '.bashrc',
+                '.kshrc', '.profile',
+                '.zshenv', '.zprofile', '.zshrc', '.zlogin', '.zlogout',
+                'zshenv',  'zprofile',  'zshrc',  'zlogin',  'zlogout',
+                'APKBUILD', 'PKGBUILD', '*.ebuild',
                 '*.eclass', '*.exheres-0', '*.exlib'
 
       mimetypes 'application/x-sh', 'application/x-shellscript', 'text/x-sh',
@@ -18,6 +21,7 @@ module Rouge
 
       def self.detect?(text)
         return true if text.shebang?(/(ba|z|k)?sh/)
+        return true if text.start_with?('#compdef', '#autoload')
       end
 
       KEYWORDS = %w(
@@ -48,13 +52,13 @@ module Rouge
       state :basic do
         rule %r/#.*$/, Comment
 
-        rule %r/\b(#{KEYWORDS})\s*\b/, Keyword
-        rule %r/\bcase\b/, Keyword, :case
+        rule %r/(#{KEYWORDS})\s*\b/, Keyword
+        rule %r/case\b/, Keyword, :case
 
-        rule %r/\b(#{BUILTINS})\s*\b(?!(\.|-))/, Name::Builtin
+        rule %r/(#{BUILTINS})\s*\b(?!(\.|-))/, Name::Builtin
         rule %r/[.](?=\s)/, Name::Builtin
 
-        rule %r/(\b\w+)(=)/ do
+        rule %r/(\w+)(=)/ do
           groups Name::Variable, Operator
         end
 
@@ -165,7 +169,7 @@ module Rouge
       end
 
       state :case do
-        rule %r/\besac\b/, Keyword, :pop!
+        rule %r/esac\b/, Keyword, :pop!
         rule %r/\|/, Punctuation
         rule %r/\)/, Punctuation, :case_stanza
         mixin :root

@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*- #
 # frozen_string_literal: true
 
+require_relative 'xpath'
+
 module Rouge
   module Lexers
-    load_lexer 'xpath.rb'
     class XQuery < XPath
       title 'XQuery'
       desc 'XQuery 3.1: An XML Query Language'
       tag 'xquery'
-      filenames '*.xquery', '*.xq'
+      filenames '*.xquery', '*.xq', '*.xqm'
       mimetypes 'application/xquery'
 
       def self.keywords

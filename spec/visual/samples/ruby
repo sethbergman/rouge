@@ -277,6 +277,11 @@ puts [[x%w].reverse]
 def x(s) puts x end
 x %w].]
 
+# wordy logical operators
+5.prime? or fail "something is terribly wrong"
+chip = Bag.find_potato and chip.eat!
+puts "odd" if not num % 2 == 0
+
 ##################################################################
 # HEREDOCS
 <<-CONTENT.strip_heredoc
@@ -329,6 +334,8 @@ X "foo" # This is a method call, heredoc ends at the prev line
 
 %q[haha! [nesting [rocks] ! ] ] # commeht here
 
+%(a #{interpolation_variable} b)
+%Q(a #{interpolation_variable} b)
 
 ##################################################################
 class                                                  NP
@@ -444,6 +451,17 @@ puts '%d SWS' % (events.inject(0) { |sum, ((day, daytime),)| sum + (daytime[/\d+
 string = % foo     # strange. huh?
 print "Escape here: \n"
 print 'Dont escape here: \n'
+
+# Unicode support
+class ViệtNam
+  def chào(buổi)
+    câu_chào = {sáng: "Chào buổi sáng", chiều: "Chào buổi chiều"}
+    puts câu_chào[buổi]
+  end
+end
+
+việt_nam = ViệtNam.new
+việt_nam.chào(:sáng)
 
 __END__
 Informatik und Informationsgesellschaft I: Digitale Medien (32 214)

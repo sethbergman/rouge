@@ -47,8 +47,6 @@ describe Rouge::Guesser do
     it 'sequentially filters' do
       custom = Class.new(Rouge::Guesser) {
         define_method(:filter) { |lexers|
-          passed_lexers = lexers
-
           [Rouge::Lexers::Javascript, Rouge::Lexers::Prolog]
         }
       }.new
@@ -74,6 +72,42 @@ describe Rouge::Guesser do
     it 'guesses by modeline' do
       # don't confuse actual editors when opening this file lol
       assert_guess(Rouge::Lexers::Ruby, :source => '# v' + 'im: syntax=ruby')
+    end
+  end
+
+  describe 'disambiguation guessing' do
+    describe 'guesses *.pp filename' do
+      it 'guesses pascal' do
+        assert_guess(
+          Rouge::Lexers::Pascal,
+          filename: 'foo.pp',
+          source: <<~SOURCE
+            function sum(a, b: integer): integer;
+            var tempSum: integer
+            begin
+              tempSum := a + b;
+              sum := tempSum;
+            end;
+          SOURCE
+        )
+      end
+
+      it 'guesses puppet' do
+        assert_guess(
+          Rouge::Lexers::Puppet,
+          filename: 'foo.pp',
+          source: <<~SOURCE
+            class foo::bar (
+              Array[String] = foo::bar::baz,
+            ) {
+              $foo = [
+                'var',
+                'end.',
+              ]
+            }
+          SOURCE
+        )
+      end
     end
   end
 end

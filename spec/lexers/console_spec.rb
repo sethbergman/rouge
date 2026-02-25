@@ -22,6 +22,17 @@ describe Rouge::Lexers::ConsoleLexer do
       ['Text', 'foo']
   end
 
+  it 'does not crash if argument ends with backslash' do
+    assert_tokens_equal '$ cd application\\bin\\',
+      ['Generic.Prompt', '$'],
+      ['Text.Whitespace', ' '],
+      ['Name.Builtin', 'cd '],
+      ['Text', 'application'],
+      ['Literal.String.Escape', '\\b'],
+      ['Keyword', 'in'],
+      ['Literal.String.Escape', '\\']
+  end
+
   it 'parses a custom error' do
     subject_with_options = klass.new({ error: 'No command,Unhandled' })
     assert_tokens_equal 'No command \'foo\' found, did you mean:', subject_with_options,
@@ -43,6 +54,12 @@ describe Rouge::Lexers::ConsoleLexer do
       ['Generic.Prompt', '#'],
       ['Text.Whitespace', ' '],
       ['Text', 'this is not a comment']
+  end
+
+  it 'does not lex comments when comments=false with a custom prompt' do
+    subject_with_options = klass.new({ prompt: '>', comments: false })
+    assert_tokens_equal '##MS_PolicyEventProcessingLogin##', subject_with_options,
+      ['Generic.Output', '##MS_PolicyEventProcessingLogin##']
   end
 
   describe 'guessing' do

@@ -11,7 +11,7 @@ module Rouge
       option :content, "the language for the content (default: auto-detect)"
 
       def self.http_methods
-        @http_methods ||= %w(GET POST PUT DELETE HEAD OPTIONS TRACE PATCH)
+        @http_methods ||= %w(GET POST PUT DELETE HEAD OPTIONS TRACE PATCH QUERY)
       end
 
       def content_lexer
@@ -46,7 +46,7 @@ module Rouge
 
         # response
         rule %r(
-          (HTTPS?)(/)(\d(?:\.\d))([ ]+)  # http version
+          (HTTPS?)(/)(\d(?:\.\d)?)([ ]+) # http version
           (\d{3})([ ]+)?                 # status
           ([^\r\n]*)?(\r?\n|$)           # status message
         )x do
